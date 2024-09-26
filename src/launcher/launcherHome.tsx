@@ -1,24 +1,35 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 
-const App: React.FC = () => {
-    const [name, setName] = useState<string>('');
-    const [userId, setUserId] = useState<string>('');
+const LauncherHome: React.FC = () => {
+    const [nameInput, setName] = useState<string>('');
+    const [userIdInput, setUserId] = useState<string>('');
   
     // REST API URL constants
-    const CREATE_USER_API = 'https://localhost:8080/users/create';
-    const LOGIN_USER_API = 'https://localhost:8080/users/{id}';
+    const CREATE_USER_API = 'http://localhost:8080/users/create';
+    const GET_USER_API = (userId) => `http://localhost:8080/users/${userId}`;
   
     // Function to handle creating a new user
     const createUser = async () => {
-      if (!name) {
+      if (!nameInput) {
         alert('Please enter a name.');
         return;
       }
+
+      const createUserRequestBody = {
+        username: nameInput
+      };
+
       try {
-        const response = await axios.post(CREATE_USER_API, { name });
+        const response = await axios.post(CREATE_USER_API, createUserRequestBody);
         console.log('User created:', response.data);
+
+        const userId = response.data.id;
         alert(`User created successfully! User ID: ${response.data.id}`);
+
+        // Open a new tab showing uers home
+        window.open(`/users/${userId}`, '_blank');
+
       } catch (error) {
         console.error('Error creating user:', error);
         alert('Failed to create user.');
@@ -27,14 +38,19 @@ const App: React.FC = () => {
   
     // Function to handle logging in a user
     const loginUser = async () => {
-      if (!userId) {
+      if (!userIdInput) {
         alert('Please enter a user ID.');
         return;
       }
       try {
-        const response = await axios.post(LOGIN_USER_API, { id: userId });
+        const response = await axios.get(GET_USER_API(userIdInput));
         console.log('User logged in:', response.data);
-        alert(`User logged in successfully!`);
+
+        const userId = response.data.id;
+
+        // Open a new tab showing uers home
+        window.open(`/users/${userId}`, '_blank');
+
       } catch (error) {
         console.error('Error logging in user:', error);
         alert('Failed to log in.');
@@ -49,7 +65,7 @@ const App: React.FC = () => {
           <h2>Create a New User</h2>
           <input
             type="text"
-            value={name}
+            value={nameInput}
             onChange={(e) => setName(e.target.value)}
             placeholder="Enter user name"
             style={{ marginRight: '10px', padding: '5px', width: '70%' }}
@@ -64,7 +80,7 @@ const App: React.FC = () => {
           <h2>Login User</h2>
           <input
             type="text"
-            value={userId}
+            value={userIdInput}
             onChange={(e) => setUserId(e.target.value)}
             placeholder="Enter user ID"
             style={{ marginRight: '10px', padding: '5px', width: '70%' }}
@@ -77,4 +93,4 @@ const App: React.FC = () => {
     );
   };
   
-  export default App;
+  export default LauncherHome;
