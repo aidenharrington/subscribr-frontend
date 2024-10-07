@@ -7,13 +7,17 @@ const UserHome: React.FC = () => {
     const [username, setUsername] = useState<string>('');
     const [subscriptions, setSubscriptions] = useState<User[]>([]);
     const [videoName, setVideoName] = useState<string>('');
+    const [webhookData, setWebhookData] = useState<string | null>(null);
 
     // REST API URL constants
     const GET_USER_API = (userId) => `http://localhost:8080/users/${userId}`;
+    const SUBSCRIBE_TO_WEBHOOK_EVENTS = (userId) => `http://localhost:8080/subscribe/${userId}`;
     const POST_VIDEO_API = (userId) => `http://localhost:8080/users/${userId}/post-video`;
 
     
     useEffect(() => {
+        console.log('userId:', userId);
+        // Populate user data
         const getUserData = async () => {
             try {
                 const response = await axios.get(GET_USER_API(userId))
@@ -25,9 +29,28 @@ const UserHome: React.FC = () => {
         };
 
         getUserData();
+
+        // Subscribe to Webhook Emitter events
+        const eventSource = new EventSource(SUBSCRIBE_TO_WEBHOOK_EVENTS(userId));
+        eventSource.addEventListener('webhook-event', (event) => {
+            const data = event.data;
+            console.log('Received webhook event:', data);
+            setWebhookData(data);
+
+            // Clear notifications after 5 seconds
+            setTimeout(() => {
+                setWebhookData(null);
+            }, 5000);
+        });
+
+        return () => {
+            eventSource.close();
+        };
+
     }, [userId]);
 
     const handleVideoPost =async () => {
+        console.log("test")
         if (!videoName) {
             alert('Please provide a video name.');
             return;
@@ -50,6 +73,13 @@ const UserHome: React.FC = () => {
     return (
         <div style={{ padding: '20px', maxWidth: '600px', margin: '0 auto' }}>
             <h1>Welcome, {username}!</h1>
+
+            {/* Conditionally display the notification banner */}
+            {webhookData && (
+                <div style={notificationBannerStyle}>
+                    <p>{webhookData}</p>
+                </div>
+            )}
 
             <h2>Your Subscriptions</h2>
             <ul>
@@ -75,6 +105,18 @@ const UserHome: React.FC = () => {
             </button>
         </div>
     );
+};
+
+// Styles for the notification banner with correct types
+const notificationBannerStyle: React.CSSProperties = {
+    backgroundColor: '#f8d7da',
+    color: '#721c24',
+    padding: '10px',
+    margin: '10px 0',
+    border: '1px solid #f5c6cb',
+    borderRadius: '5px',
+    fontWeight: 'bold',
+    textAlign: 'center' as 'center', // 'center' must match one of the allowed values
 };
 
 export default UserHome;
