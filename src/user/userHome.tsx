@@ -32,7 +32,7 @@ const UserHome: React.FC = () => {
 
         // Subscribe to Webhook Emitter events
         const eventSource = new EventSource(SUBSCRIBE_TO_WEBHOOK_EVENTS(userId));
-        eventSource.addEventListener('webhook-event', (event) => {
+        eventSource.addEventListener('video-upload-complete', (event) => {
             const data = event.data;
             console.log('Received webhook event:', data);
             setWebhookData(data);
