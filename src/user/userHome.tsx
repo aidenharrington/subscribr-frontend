@@ -6,21 +6,23 @@ const UserHome: React.FC = () => {
     const { userId } = useParams<{ userId: string }>(); // Get userId from URL
     const [username, setUsername] = useState<string>('');
     const [subscriptions, setSubscriptions] = useState<User[]>([]);
+    const [otherUsers, setOtherUsers] = useState<User[]>([]);
     const [videoName, setVideoName] = useState<string>('');
     const [webhookData, setWebhookData] = useState<string | null>(null);
 
     // REST API URL constants
-    const GET_USER_API = (userId) => `http://localhost:8080/users/${userId}`;
+    const GET_USER_BY_ID_API = (userId) => `http://localhost:8080/users/${userId}`;
+    const GET_ALL_USERS_API = "http://localhost:8080/users";
     const SUBSCRIBE_TO_WEBHOOK_EVENTS = (userId) => `http://localhost:8080/subscribe/${userId}`;
     const POST_VIDEO_API = (userId) => `http://localhost:8080/users/${userId}/post-video`;
+    const SUBSCRIBE_TO_USER = (userId, subscriptionToId) => `http://localhost:8080/users/${userId}/subscribe/${subscriptionToId}`
 
     
     useEffect(() => {
-        console.log('userId:', userId);
         // Populate user data
         const getUserData = async () => {
             try {
-                const response = await axios.get(GET_USER_API(userId))
+                const response = await axios.get(GET_USER_BY_ID_API(userId))
                 setUsername(response.data.username);
                 setSubscriptions(response.data.subscriptions);
             } catch (error) {
@@ -29,6 +31,19 @@ const UserHome: React.FC = () => {
         };
 
         getUserData();
+
+        // Populate  other users
+        const getOtherUsers = async () => {
+            try {
+                const response = await axios.get(GET_ALL_USERS_API);
+        
+                setOtherUsers(response.data);
+            } catch (error) {
+                console.error('Error fetching other users');
+            }
+        };
+
+        getOtherUsers();
 
         // Subscribe to Webhook Emitter events
         const eventSource = new EventSource(SUBSCRIBE_TO_WEBHOOK_EVENTS(userId));
@@ -69,6 +84,17 @@ const UserHome: React.FC = () => {
         }
     };
 
+    const subscribeToUser = async (subscriptionToId) => {
+        try {
+            await axios.post(SUBSCRIBE_TO_USER(userId, subscriptionToId))
+
+            alert(`Successfully subscribed to user: ${subscriptionToId}`);
+        } catch (error) {
+            console.error('Error subscribing to user: ', error);
+        }
+        
+    };
+
 
     return (
         <div style={{ padding: '20px', maxWidth: '600px', margin: '0 auto' }}>
@@ -84,11 +110,13 @@ const UserHome: React.FC = () => {
             <h2>Your Subscriptions</h2>
             <ul>
                 {subscriptions.length > 0 ? (
-                    subscriptions.map((sub) => <li key={sub.id}>{sub.username}</li>)
+                    subscriptions
+                        .map((sub) => <li key={sub.id}>{sub.username}</li>)
                 ) : (
                     <li>No subscriptions found.</li>
                 )}
             </ul>
+
 
             <hr />
 
@@ -103,7 +131,32 @@ const UserHome: React.FC = () => {
             <button onClick={handleVideoPost} style={{ padding: '5px' }}>
                 Upload Video
             </button>
+
+            <hr />
+
+            <h2>Subscribe to New Channel</h2>
+            <ul>
+                {otherUsers.length > 0 ? (
+                    otherUsers
+                        .filter(user => 
+                            String(user.id) !== String(userId) &&
+                            !subscriptions.some(sub => String(sub.id) === String(user.id))
+                        )
+                        .map(user => 
+                            <li key={user.id}>
+                                {user.username}
+                                <button onClick={() => subscribeToUser(user.id)}>Subscribe</button>
+                            </li>
+                        )
+                ) : (
+                    <li>No users found.</li>
+                )}
+            </ul>
+
+
         </div>
+
+
     );
 };
 
