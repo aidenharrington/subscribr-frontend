@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import { useParams } from 'react-router-dom';
 
@@ -16,36 +16,40 @@ const UserHome: React.FC = () => {
     const SUBSCRIBE_TO_WEBHOOK_EVENTS = (userId) => `http://localhost:8080/subscribe/${userId}`;
     const POST_VIDEO_API = (userId) => `http://localhost:8080/users/${userId}/post-video`;
     const SUBSCRIBE_TO_USER = (userId, subscriptionToId) => `http://localhost:8080/users/${userId}/subscribe/${subscriptionToId}`
+    const UNSUBSCRIBE_TO_USER = (userId, subscriptionToId) => `http://localhost:8080/users/${userId}/unsubscribe/${subscriptionToId}`
 
-    
+    const getUserData = useCallback(async () => {
+        try {
+            const response = await axios.get(GET_USER_BY_ID_API(userId))
+            setUsername(response.data.username);
+            setSubscriptions(response.data.subscriptions);
+        } catch (error) {
+            console.error('Error fetching user data: ', error);
+        }
+    }, [userId]);
+
+    const getOtherUsers = useCallback(async () => {
+        try {
+            const response = await axios.get(GET_ALL_USERS_API);
+            setOtherUsers(response.data);
+        } catch (error) {
+            console.error('Error fetching other users');
+        }
+    }, []);
+
+    // Load user data
     useEffect(() => {
-        // Populate user data
-        const getUserData = async () => {
-            try {
-                const response = await axios.get(GET_USER_BY_ID_API(userId))
-                setUsername(response.data.username);
-                setSubscriptions(response.data.subscriptions);
-            } catch (error) {
-                console.error('Error fetching user data: ', error);
-            }
-        };
-
         getUserData();
+    }, [getUserData]);
 
-        // Populate  other users
-        const getOtherUsers = async () => {
-            try {
-                const response = await axios.get(GET_ALL_USERS_API);
-        
-                setOtherUsers(response.data);
-            } catch (error) {
-                console.error('Error fetching other users');
-            }
-        };
-
+    // Load other users
+    useEffect(() => {
         getOtherUsers();
+    }, [getOtherUsers]);
+    
 
-        // Subscribe to Webhook Emitter events
+    // Subscribe to Webhook Emitter events
+    useEffect(() => {
         const eventSource = new EventSource(SUBSCRIBE_TO_WEBHOOK_EVENTS(userId));
         eventSource.addEventListener('video-upload-complete', (event) => {
             const data = event.data;
@@ -88,7 +92,30 @@ const UserHome: React.FC = () => {
         try {
             await axios.post(SUBSCRIBE_TO_USER(userId, subscriptionToId))
 
-            alert(`Successfully subscribed to user: ${subscriptionToId}`);
+            // Find the user to subscribe to
+            const userToSubscribe = otherUsers.find(user => user.id === subscriptionToId);
+
+
+            // Update subscriptions
+            if (userToSubscribe) {
+                setSubscriptions((prev) => [...prev, userToSubscribe]);
+            }
+
+            
+        } catch (error) {
+            console.error('Error subscribing to user: ', error);
+        }
+        
+    };
+
+    const unsubscribeToUser = async (subscriptionToId) => {
+        try {
+            await axios.post(UNSUBSCRIBE_TO_USER(userId, subscriptionToId))
+
+            // Update subscriptions
+            setSubscriptions((prev) => prev.filter(user => user.id !== userId));
+
+            
         } catch (error) {
             console.error('Error subscribing to user: ', error);
         }
@@ -111,7 +138,12 @@ const UserHome: React.FC = () => {
             <ul>
                 {subscriptions.length > 0 ? (
                     subscriptions
-                        .map((sub) => <li key={sub.id}>{sub.username}</li>)
+                        .map(sub => 
+                            <li key={sub.id}>
+                                {sub.username}
+                                <button onClick={() => unsubscribeToUser(sub.id)}>Unsubscribe</button>
+                            </li>
+                        )
                 ) : (
                     <li>No subscriptions found.</li>
                 )}
