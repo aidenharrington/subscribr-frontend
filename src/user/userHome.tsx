@@ -8,7 +8,8 @@ const UserHome: React.FC = () => {
     const [subscriptions, setSubscriptions] = useState<User[]>([]);
     const [otherUsers, setOtherUsers] = useState<User[]>([]);
     const [videoName, setVideoName] = useState<string>('');
-    const [webhookData, setWebhookData] = useState<string | null>(null);
+    const [videoUploadCompleteWebhookData, setVideoUploadCompleteWebhookData] = useState<string | null>(null);
+    const [newSubscriberVideoWebhookData, setNewSubscriberVideoWebhookData] = useState<string | null>(null);
 
     // REST API URL constants
     const GET_USER_BY_ID_API = (userId) => `http://localhost:8080/users/${userId}`;
@@ -53,12 +54,23 @@ const UserHome: React.FC = () => {
         const eventSource = new EventSource(SUBSCRIBE_TO_WEBHOOK_EVENTS(userId));
         eventSource.addEventListener('video-upload-complete', (event) => {
             const data = event.data;
-            console.log('Received webhook event:', data);
-            setWebhookData(data);
+            console.log('Received video-upload-complete webhook event:', data);
+            setVideoUploadCompleteWebhookData(data);
 
             // Clear notifications after 5 seconds
             setTimeout(() => {
-                setWebhookData(null);
+                setVideoUploadCompleteWebhookData(null);
+            }, 5000);
+        });
+
+        eventSource.addEventListener('new-subscribed-video-uploaded', (event) => {
+            const data = event.data;
+            console.log('Received new-subscribed-video-uploaded webhook event:', data);
+            setNewSubscriberVideoWebhookData(data);
+
+            // Clear notifications after 5 seconds
+            setTimeout(() => {
+                setVideoUploadCompleteWebhookData(null);
             }, 5000);
         });
 
@@ -113,11 +125,11 @@ const UserHome: React.FC = () => {
             await axios.post(UNSUBSCRIBE_TO_USER(userId, subscriptionToId))
 
             // Update subscriptions
-            setSubscriptions((prev) => prev.filter(user => user.id !== userId));
+            setSubscriptions((prev) => prev.filter(user => user.id !== subscriptionToId));
 
             
         } catch (error) {
-            console.error('Error subscribing to user: ', error);
+            console.error('Error unsubscribing to user: ', error);
         }
         
     };
@@ -128,9 +140,9 @@ const UserHome: React.FC = () => {
             <h1>Welcome, {username}!</h1>
 
             {/* Conditionally display the notification banner */}
-            {webhookData && (
+            {videoUploadCompleteWebhookData && (
                 <div style={notificationBannerStyle}>
-                    <p>{webhookData}</p>
+                    <p>{videoUploadCompleteWebhookData}</p>
                 </div>
             )}
 

@@ -31,8 +31,13 @@ const LauncherHome: React.FC = () => {
         window.open(`/users/${userId}`, '_blank');
 
       } catch (error) {
-        console.error('Error creating user:', error);
-        alert('Failed to create user.');
+        if (error.response.status === 409) {
+          console.error('Duplicate username');
+          alert('Duplicate username, please choose another.');
+        } else {
+          console.error('Error creating user:', error);
+          alert('Failed to create user.');
+        }
       }
     };
   
