@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
+import { TextField, Button, Container, Typography, Box, Divider } from '@mui/material';
 import axios from 'axios';
+import { ThemeProvider } from '@mui/material/styles';
+import theme from '../ui/theme';
 
 const LauncherHome: React.FC = () => {
     const [nameInput, setName] = useState<string>('');
@@ -25,7 +28,10 @@ const LauncherHome: React.FC = () => {
         console.log('User created:', response.data);
 
         const userId = response.data.id;
-        alert(`User created successfully! User ID: ${response.data.id}`);
+
+        setName('');
+
+
 
         // Open a new tab showing uers home
         window.open(`/users/${userId}`, '_blank');
@@ -63,39 +69,76 @@ const LauncherHome: React.FC = () => {
     };
   
     return (
-      <div style={{ padding: '20px', maxWidth: '400px', margin: '0 auto' }}>
-        <h1>User Management</h1>
-        {/* Create New User Section */}
-        <div>
-          <h2>Create a New User</h2>
-          <input
-            type="text"
-            value={nameInput}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Enter user name"
-            style={{ marginRight: '10px', padding: '5px', width: '70%' }}
-          />
-          <button onClick={createUser} style={{ padding: '5px' }}>
-            Create User
-          </button>
-        </div>
-        <hr />
-        {/* Login Section */}
-        <div>
-          <h2>Login User</h2>
-          <input
-            type="text"
-            value={userIdInput}
-            onChange={(e) => setUserId(e.target.value)}
-            placeholder="Enter user ID"
-            style={{ marginRight: '10px', padding: '5px', width: '70%' }}
-          />
-          <button onClick={loginUser} style={{ padding: '5px' }}>
-            Login
-          </button>
-        </div>
-      </div>
-    );
+      <ThemeProvider theme={theme}>
+        {/* Application Name */}
+        <Typography
+          variant="h4"
+          sx={{
+            color: theme.palette.primary.main,
+            margin: '16px 0', // Add some margin for spacing
+            marginLeft: '16px', // Align it to the left
+          }}
+        >
+          Subscribr
+        </Typography>
+
+        <Divider variant="middle" />
+
+
+        <Container maxWidth="sm" style={{ marginTop: '40px' }}>
+    
+          {/* Login Section */}
+          <Box sx={{ mb: 4 }}>
+            <Typography variant="h5" color="secondary" gutterBottom>
+              User Login
+            </Typography>
+            <TextField
+              fullWidth
+              label="Enter user ID"
+              variant="outlined"
+              value={userIdInput}
+              onChange={(e) => setUserId(e.target.value)}
+              margin="normal"
+            />
+            <Button
+              fullWidth
+              variant="contained"
+              color="primary"
+              onClick={loginUser}
+              sx={{ mt: 2 }}
+            >
+              Login
+            </Button>
+          </Box>
+    
+          <Divider variant="middle" />
+    
+          {/* Create New User Section */}
+          <Box sx={{ mt: 4 }}>
+            <Typography variant="h5" color="secondary" gutterBottom>
+              Create a New User
+            </Typography>
+            <TextField
+              fullWidth
+              label="Enter user name"
+              variant="outlined"
+              value={nameInput}
+              onChange={(e) => setName(e.target.value)}
+              margin="normal"
+            />
+            <Button
+              fullWidth
+              variant="contained"
+              color="primary"
+              onClick={createUser}
+              sx={{ mt: 2 }}
+            >
+              Create User
+            </Button>
+          </Box>
+        </Container>
+      </ThemeProvider>
+    );    
   };
   
   export default LauncherHome;
