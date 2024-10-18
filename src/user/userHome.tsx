@@ -68,9 +68,9 @@ const UserHome: React.FC = () => {
   useEffect(() => {
     const eventSource = new EventSource(SUBSCRIBE_TO_WEBHOOK_EVENTS(userId));
     eventSource.addEventListener('video-upload-complete', (event) => {
-        const data = event.data;
+        const data = JSON.parse(event.data);
         console.log('Received video-upload-complete webhook event:', data);
-        const notificationMessageText = `Video upload complete: ${data}`
+        const notificationMessageText = `Your video: ${data.name} has finished uploading.`
         setSnackbarOpen(false);
         setNotificationMessage(notificationMessageText);
         setSeverity('success');
@@ -78,13 +78,13 @@ const UserHome: React.FC = () => {
     });
 
     eventSource.addEventListener('new-subscribed-video-uploaded', (event) => {
-        const data = event.data;
+        const data = JSON.parse(event.data);
         console.log('Received new-subscribed-video-uploaded webhook event:', data);
-        const notificationMessageText = `New video uploaded by subscribed channel: ${data}`
+        const notificationMessageText = `New video: ${data.name} uploaded by ${data.uploaderUsername}`
         setSnackbarOpen(false);
         setNotificationMessage(notificationMessageText);
         setSeverity('success');
-
+        setSnackbarOpen(true);
     });
 
     return () => {
@@ -102,6 +102,7 @@ const UserHome: React.FC = () => {
 
     const postVideoRequestBody = {
       name: videoName,
+      videoUploaderId: userId,
     };
 
     try {
