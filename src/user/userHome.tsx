@@ -30,10 +30,10 @@ const UserHome: React.FC = () => {
   // REST API URL constants
   const GET_USER_BY_ID_API = (userId) => `http://localhost:8080/users/${userId}`;
   const GET_ALL_USERS_API = "http://localhost:8080/users";
-  const POST_VIDEO_API = (userId) => `http://localhost:8080/users/${userId}/post-video`;
-  const SUBSCRIBE_TO_USER = (userId, subscriptionToId) => `http://localhost:8080/users/${userId}/subscribe/${subscriptionToId}`;
-  const UNSUBSCRIBE_TO_USER = (userId, subscriptionToId) => `http://localhost:8080/users/${userId}/unsubscribe/${subscriptionToId}`;
-  const SUBSCRIBE_TO_WEBHOOK_EVENTS = (userId) => `http://localhost:8080/subscribe/${userId}`;
+  const POST_VIDEO_API = (userId) => `http://localhost:8080/videos/${userId}/post-video`;
+  const SUBSCRIBE_TO_USER = (userId, subscriptionToId) => `http://localhost:8080/subscriptions/${userId}/subscribe/${subscriptionToId}`;
+  const UNSUBSCRIBE_TO_USER = (userId, subscriptionToId) => `http://localhost:8080/subscriptions/${userId}/unsubscribe/${subscriptionToId}`;
+  const SUBSCRIBE_TO_WEBHOOK_EVENTS = (userId) => `http://localhost:8080/subscribe-to-events/${userId}`;
 
   const getUserData = useCallback(async () => {
     try {
@@ -121,7 +121,7 @@ const UserHome: React.FC = () => {
   const subscribeToUser = async (subscriptionToId) => {
     try {
       await axios.post(SUBSCRIBE_TO_USER(userId, subscriptionToId));
-      const userToSubscribe = otherUsers.find((user) => user.id === subscriptionToId);
+      const userToSubscribe = otherUsers?.find((user) => user.id === subscriptionToId);
       if (userToSubscribe) {
         setSubscriptions((prev) => [...prev, userToSubscribe]);
       }
@@ -216,7 +216,7 @@ const UserHome: React.FC = () => {
           Subscribe to New Channel
         </Typography>
         <List>
-          {otherUsers.length > 0 ? (
+          {Array.isArray(otherUsers) && otherUsers.length > 0 ? (
             otherUsers
               .filter(
                 (user) =>
@@ -226,7 +226,7 @@ const UserHome: React.FC = () => {
               .map((user) => (
                 <ListItem key={user.id}>
                   <ListItemText primary={user.username} />
-                  <Button variant="outlined" color="primary" onClick={() => subscribeToUser(user.id)}>
+                  <Button variant="contained" color="primary" onClick={() => subscribeToUser(user.id)}>
                     Subscribe
                   </Button>
                 </ListItem>
