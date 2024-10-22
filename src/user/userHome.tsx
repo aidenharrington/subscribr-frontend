@@ -29,6 +29,7 @@ const UserHome: React.FC = () => {
 
   // REST API URL constants
   const GET_USER_BY_ID_API = (userId) => `http://localhost:8080/users/${userId}`;
+  const GET_SUBSCRIPTIONS_BY_ID = (userId) => `http://localhost:8080/subscriptions/${userId}`
   const GET_ALL_USERS_API = "http://localhost:8080/users";
   const POST_VIDEO_API = (userId) => `http://localhost:8080/videos/${userId}/post-video`;
   const SUBSCRIBE_TO_USER = (userId, subscriptionToId) => `http://localhost:8080/subscriptions/${userId}/subscribe/${subscriptionToId}`;
@@ -39,11 +40,19 @@ const UserHome: React.FC = () => {
     try {
       const response = await axios.get(GET_USER_BY_ID_API(userId));
       setUsername(response.data.username);
-      setSubscriptions(response.data.subscriptions);
     } catch (error) {
       console.error('Error fetching user data: ', error);
     }
   }, [userId]);
+
+  const getUserSubscriptions = useCallback(async () => {
+    try {
+      const response = await axios.get(GET_SUBSCRIPTIONS_BY_ID(userId));
+      setSubscriptions(response.data)
+    } catch (error) {
+      console.error('Error fetching user subscriptions: ', error);
+    }
+  }, [userId])
 
   const getOtherUsers = useCallback(async () => {
     try {
@@ -58,6 +67,11 @@ const UserHome: React.FC = () => {
   useEffect(() => {
     getUserData();
   }, [getUserData]);
+
+  // Load user subscriptions
+  useEffect(() => {
+    getUserSubscriptions();
+  }, [getUserSubscriptions]);
 
   // Load other users
   useEffect(() => {
@@ -123,7 +137,8 @@ const UserHome: React.FC = () => {
       await axios.post(SUBSCRIBE_TO_USER(userId, subscriptionToId));
       const userToSubscribe = otherUsers?.find((user) => user.id === subscriptionToId);
       if (userToSubscribe) {
-        setSubscriptions((prev) => [...prev, userToSubscribe]);
+        // Null and undefined safe addition of user to list of subscriptions
+        setSubscriptions((prev) => [...(prev ?? []), userToSubscribe]);
       }
     } catch (error) {
       console.error('Error subscribing to user: ', error);
@@ -193,7 +208,7 @@ const UserHome: React.FC = () => {
           Your Subscriptions
         </Typography>
         <List>
-          {subscriptions.length > 0 ? (
+          {Array.isArray(subscriptions) && subscriptions.length > 0 ? (
             subscriptions.map((sub) => (
               <ListItem key={sub.id}>
                 <ListItemText primary={sub.username} />
@@ -221,7 +236,7 @@ const UserHome: React.FC = () => {
               .filter(
                 (user) =>
                   String(user.id) !== String(userId) &&
-                  !subscriptions.some((sub) => String(sub.id) === String(user.id))
+                  !subscriptions?.some((sub) => String(sub.id) === String(user.id))
               )
               .map((user) => (
                 <ListItem key={user.id}>

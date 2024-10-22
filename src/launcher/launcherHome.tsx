@@ -1,21 +1,32 @@
 import React, { useState } from 'react';
-import { TextField, Button, Container, Typography, Box, Divider } from '@mui/material';
+import { TextField, Button, Container, Typography, Box, Divider, Snackbar, Alert } from '@mui/material';
 import axios from 'axios';
 import { ThemeProvider } from '@mui/material/styles';
 import theme from '../ui/theme';
 
 const LauncherHome: React.FC = () => {
     const [nameInput, setName] = useState<string>('');
-    const [userIdInput, setUserId] = useState<string>('');
+    const [userIdInput,  setUserIdInput] = useState<string>('');
+    const [errorMessage, setErrorMessage] = useState<string>('');
+    const [openError, setOpenError] = useState<boolean>(false);
   
     // REST API URL constants
     const CREATE_USER_API = 'http://localhost:8080/users/create';
     const GET_USER_API = (userId) => `http://localhost:8080/users/${userId}`;
   
+    const handleError = (message: string) => {
+      setErrorMessage(message);
+      setOpenError(true);
+    };
+
+    const handleCloseError = () => {
+      setOpenError(false);
+    };
+
     // Function to handle creating a new user
     const createUser = async () => {
       if (!nameInput) {
-        alert('Please enter a name.');
+        handleError('Please enter a name.');
         return;
       }
 
@@ -39,10 +50,10 @@ const LauncherHome: React.FC = () => {
       } catch (error) {
         if (error.response.status === 409) {
           console.error('Duplicate username');
-          alert('Duplicate username, please choose another.');
+          handleError('Duplicate username, please choose another.');
         } else {
           console.error('Error creating user:', error);
-          alert('Failed to create user.');
+          handleError('Failed to create user.');
         }
       }
     };
@@ -50,7 +61,7 @@ const LauncherHome: React.FC = () => {
     // Function to handle logging in a user
     const loginUser = async () => {
       if (!userIdInput) {
-        alert('Please enter a user ID.');
+        handleError('Please enter a user ID.');
         return;
       }
       try {
@@ -59,12 +70,14 @@ const LauncherHome: React.FC = () => {
 
         const userId = response.data.id;
 
+        setUserIdInput('');
+
         // Open a new tab showing uers home
         window.open(`/users/${userId}`, '_blank');
 
       } catch (error) {
         console.error('Error logging in user:', error);
-        alert('Failed to log in.');
+        handleError('Failed to log in.');
       }
     };
   
@@ -97,7 +110,7 @@ const LauncherHome: React.FC = () => {
               label="Enter user ID"
               variant="outlined"
               value={userIdInput}
-              onChange={(e) => setUserId(e.target.value)}
+              onChange={(e) => setUserIdInput(e.target.value)}
               margin="normal"
             />
             <Button
@@ -137,6 +150,15 @@ const LauncherHome: React.FC = () => {
             </Button>
           </Box>
         </Container>
+
+        {/* Snackbar for Error Alerts */}
+        <Snackbar open={openError} autoHideDuration={6000} onClose={handleCloseError}>
+        <Alert onClose={handleCloseError} severity="error" sx={{ width: '100%' }}>
+          {errorMessage}
+        </Alert>
+      </Snackbar>
+
+
       </ThemeProvider>
     );    
   };
