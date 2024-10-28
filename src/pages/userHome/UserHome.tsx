@@ -1,24 +1,33 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import axios from 'axios';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   Container,
   Typography,
-  Box,
   TextField,
   Button,
-  Divider,
   Snackbar,
   Alert,
   List,
   ListItem,
   ListItemText,
+  Divider,
 } from '@mui/material';
 import { ThemeProvider } from '@mui/material/styles';
-import theme from '../ui/theme';
+import theme from '../../ui/Theme';
+import {
+  getUserById,
+  getSubscriptionsById,
+  getAllUsers,
+  postVideo,
+  subscribeToUser,
+  unsubscribeToUser,
+  subscribeToWebhookEvents,
+} from '../../services/userService';
+import { User } from '../../types/User';
 
 const UserHome: React.FC = () => {
-  const { userId } = useParams<{ userId: string }>();
+  const { userIdParam } = useParams<{ userIdParam: string }>();
+  const [userId, setUserId] = useState<string>('');
   const [username, setUsername] = useState<string>('');
   const [subscriptions, setSubscriptions] = useState<User[]>([]);
   const [otherUsers, setOtherUsers] = useState<User[]>([]);
@@ -26,87 +35,73 @@ const UserHome: React.FC = () => {
   const [snackbarOpen, setSnackbarOpen] = useState<boolean>(false);
   const [notificationMessage, setNotificationMessage] = useState<string | null>(null);
   const [severity, setSeverity] = useState<'success' | 'error'>('success');
+  const navigate = useNavigate();
 
-  // REST API URL constants
-  const GET_USER_BY_ID_API = (userId) => `http://localhost:8080/users/${userId}`;
-  const GET_SUBSCRIPTIONS_BY_ID = (userId) => `http://localhost:8080/subscriptions/${userId}`
-  const GET_ALL_USERS_API = "http://localhost:8080/users";
-  const POST_VIDEO_API = (userId) => `http://localhost:8080/videos/${userId}/post-video`;
-  const SUBSCRIBE_TO_USER = (userId, subscriptionToId) => `http://localhost:8080/subscriptions/${userId}/subscribe/${subscriptionToId}`;
-  const UNSUBSCRIBE_TO_USER = (userId, subscriptionToId) => `http://localhost:8080/subscriptions/${userId}/unsubscribe/${subscriptionToId}`;
-  const SUBSCRIBE_TO_WEBHOOK_EVENTS = (userId) => `http://localhost:8080/subscribe-to-events/${userId}`;
+  // Ensure userId is present in path parameters
+  useEffect(() => {
+    if (!userIdParam) {
+      navigate('/error');
+    } else {
+      setUserId(userIdParam);
+    }
+  }, [userIdParam, navigate]);
 
-  const getUserData = useCallback(async () => {
+  const fetchUserData = useCallback(async () => {
     try {
-      const response = await axios.get(GET_USER_BY_ID_API(userId));
-      setUsername(response.data.username);
+      const user = await getUserById(userId);
+      setUsername(user.username);
     } catch (error) {
       console.error('Error fetching user data: ', error);
     }
   }, [userId]);
 
-  const getUserSubscriptions = useCallback(async () => {
+  const fetchUserSubscriptions = useCallback(async () => {
     try {
-      const response = await axios.get(GET_SUBSCRIPTIONS_BY_ID(userId));
-      setSubscriptions(response.data)
+      const userSubscriptions = await getSubscriptionsById(userId);
+      setSubscriptions(userSubscriptions);
     } catch (error) {
       console.error('Error fetching user subscriptions: ', error);
     }
-  }, [userId])
+  }, [userId]);
 
-  const getOtherUsers = useCallback(async () => {
+  const fetchOtherUsers = useCallback(async () => {
     try {
-      const response = await axios.get(GET_ALL_USERS_API);
-      setOtherUsers(response.data);
+      const users = await getAllUsers();
+      setOtherUsers(users);
     } catch (error) {
-      console.error('Error fetching other users');
+      console.error('Error fetching other users: ', error);
     }
   }, []);
 
-  // Load user data
   useEffect(() => {
-    getUserData();
-  }, [getUserData]);
+    fetchUserData();
+    fetchUserSubscriptions();
+    fetchOtherUsers();
+  }, [fetchUserData, fetchUserSubscriptions, fetchOtherUsers]);
 
-  // Load user subscriptions
   useEffect(() => {
-    getUserSubscriptions();
-  }, [getUserSubscriptions]);
+    const eventSource = subscribeToWebhookEvents(userId);
 
-  // Load other users
-  useEffect(() => {
-    getOtherUsers();
-  }, [getOtherUsers]);
-
-  // Subscribe to Webhook Emitter events
-  useEffect(() => {
-    const eventSource = new EventSource(SUBSCRIBE_TO_WEBHOOK_EVENTS(userId));
     eventSource.addEventListener('video-upload-complete', (event) => {
-        const data = JSON.parse(event.data);
-        console.log('Received video-upload-complete webhook event:', data);
-        const notificationMessageText = `Your video: ${data.name} has finished uploading.`
-        setSnackbarOpen(false);
-        setNotificationMessage(notificationMessageText);
-        setSeverity('success');
-        setSnackbarOpen(true);
+      const data = JSON.parse(event.data);
+      const notificationMessageText = `Your video: ${data.name} has finished uploading.`;
+      setNotificationMessage(notificationMessageText);
+      setSeverity('success');
+      setSnackbarOpen(true);
     });
 
     eventSource.addEventListener('new-subscribed-video-uploaded', (event) => {
-        const data = JSON.parse(event.data);
-        console.log('Received new-subscribed-video-uploaded webhook event:', data);
-        const notificationMessageText = `New video: ${data.name} uploaded by ${data.uploaderUsername}`
-        setSnackbarOpen(false);
-        setNotificationMessage(notificationMessageText);
-        setSeverity('success');
-        setSnackbarOpen(true);
+      const data = JSON.parse(event.data);
+      const notificationMessageText = `New video: ${data.name} uploaded by ${data.uploaderUsername}`;
+      setNotificationMessage(notificationMessageText);
+      setSeverity('success');
+      setSnackbarOpen(true);
     });
 
     return () => {
-        eventSource.close();
+      eventSource.close();
     };
-
-}, [userId]);
-
+  }, [userId]);
 
   const handleVideoPost = async () => {
     if (!videoName) {
@@ -120,7 +115,7 @@ const UserHome: React.FC = () => {
     };
 
     try {
-      await axios.post(POST_VIDEO_API(userId), postVideoRequestBody);
+      await postVideo(userId, postVideoRequestBody);
       setVideoName('');
       setNotificationMessage('Video upload has started.');
       setSeverity('success');
@@ -132,12 +127,11 @@ const UserHome: React.FC = () => {
     }
   };
 
-  const subscribeToUser = async (subscriptionToId) => {
+  const handleSubscribe = async (subscriptionToId: string) => {
     try {
-      await axios.post(SUBSCRIBE_TO_USER(userId, subscriptionToId));
+      await subscribeToUser(userId, subscriptionToId);
       const userToSubscribe = otherUsers?.find((user) => user.id === subscriptionToId);
       if (userToSubscribe) {
-        // Null and undefined safe addition of user to list of subscriptions
         setSubscriptions((prev) => [...(prev ?? []), userToSubscribe]);
       }
     } catch (error) {
@@ -145,12 +139,12 @@ const UserHome: React.FC = () => {
     }
   };
 
-  const unsubscribeToUser = async (subscriptionToId) => {
+  const handleUnsubscribe = async (subscriptionToId: string) => {
     try {
-      await axios.post(UNSUBSCRIBE_TO_USER(userId, subscriptionToId));
+      await unsubscribeToUser(userId, subscriptionToId);
       setSubscriptions((prev) => prev.filter((user) => user.id !== subscriptionToId));
     } catch (error) {
-      console.error('Error unsubscribing to user: ', error);
+      console.error('Error unsubscribing from user: ', error);
     }
   };
 
@@ -161,22 +155,14 @@ const UserHome: React.FC = () => {
 
   return (
     <ThemeProvider theme={theme}>
-        <Typography
-            variant="h4"
-            sx={{
-                color: theme.palette.primary.main,
-                margin: '16px 0', // Add some margin for spacing
-                marginLeft: '16px', // Align it to the left
-            }}
-            >
-            Subscribr
-        </Typography>
+      <Typography variant="h4" sx={{ color: theme.palette.primary.main, margin: '16px 0' }}>
+        Subscribr
+      </Typography>
       <Container maxWidth="md" style={{ marginTop: '40px' }}>
         <Typography variant="h4" color="primary" gutterBottom>
           Welcome, {username}!
         </Typography>
 
-        {/* Notification Banner */}
         <Snackbar open={snackbarOpen} onClose={handleSnackbarClose}>
           <Alert onClose={handleSnackbarClose} severity={severity}>
             {notificationMessage}
@@ -185,7 +171,6 @@ const UserHome: React.FC = () => {
 
         <Divider sx={{ my: 4 }} />
 
-        {/* Upload a Video Section */}
         <Typography variant="h5" color="secondary" gutterBottom>
           Upload a Video
         </Typography>
@@ -203,16 +188,15 @@ const UserHome: React.FC = () => {
 
         <Divider sx={{ my: 4 }} />
 
-        {/* User Subscriptions Section */}
         <Typography variant="h5" color="secondary" gutterBottom>
           Your Subscriptions
         </Typography>
         <List>
-          {Array.isArray(subscriptions) && subscriptions.length > 0 ? (
+          {subscriptions.length > 0 ? (
             subscriptions.map((sub) => (
               <ListItem key={sub.id}>
                 <ListItemText primary={sub.username} />
-                <Button variant="outlined" color="primary" onClick={() => unsubscribeToUser(sub.id)}>
+                <Button variant="outlined" color="primary" onClick={() => handleUnsubscribe(sub.id)}>
                   Unsubscribe
                 </Button>
               </ListItem>
@@ -226,22 +210,17 @@ const UserHome: React.FC = () => {
 
         <Divider sx={{ my: 4 }} />
 
-        {/* Subscribe to New Channel Section */}
         <Typography variant="h5" color="secondary" gutterBottom>
           Subscribe to New Channel
         </Typography>
         <List>
-          {Array.isArray(otherUsers) && otherUsers.length > 0 ? (
+          {otherUsers.length > 0 ? (
             otherUsers
-              .filter(
-                (user) =>
-                  String(user.id) !== String(userId) &&
-                  !subscriptions?.some((sub) => String(sub.id) === String(user.id))
-              )
+              .filter((user) => String(user.id) !== String(userId) && !subscriptions.some((sub) => String(sub.id) === String(user.id)))
               .map((user) => (
                 <ListItem key={user.id}>
                   <ListItemText primary={user.username} />
-                  <Button variant="contained" color="primary" onClick={() => subscribeToUser(user.id)}>
+                  <Button variant="contained" color="primary" onClick={() => handleSubscribe(user.id)}>
                     Subscribe
                   </Button>
                 </ListItem>
