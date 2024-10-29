@@ -59,7 +59,16 @@ const LauncherHome: React.FC = () => {
             // Open a new tab showing user's home
             window.open(`/users/${userId}`);
         } catch (error) {
-            handleError('Failed to log in.');
+
+            const axiosError = error as AxiosError;
+
+            if (axiosError.response?.status === 400) {
+                handleError('Invalid user ID.');
+            } else if (axiosError.response?.status === 404) {
+                handleError('No account found for provided user ID.');
+            } else {
+                handleError('Failed to log in.');
+            }
         }
     };
 
