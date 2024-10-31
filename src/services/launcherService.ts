@@ -1,8 +1,10 @@
 import axios from 'axios';
 
 // REST API URL constants
-const CREATE_USER_API = 'http://localhost:8080/users/create';
-const GET_USER_API = (userId: string) => `http://localhost:8080/users/${userId}`;
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
+
+const CREATE_USER_API = `${API_BASE_URL}/users/create`;
+const GET_USER_API = (userId: string) => `${API_BASE_URL}/users/${userId}`;
 
 export const createUser = async (username: string) => {
     const createUserRequestBody = { username };
