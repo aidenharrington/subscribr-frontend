@@ -21,7 +21,7 @@ import {
   postVideo,
   subscribeToUser,
   unsubscribeToUser,
-  subscribeToWebhookEvents,
+  subscribeToEmitterEvents,
 } from '../../services/userService';
 import { User } from '../../types/User';
 
@@ -80,7 +80,7 @@ const UserHome: React.FC = () => {
   }, [fetchUserData, fetchUserSubscriptions, fetchOtherUsers]);
 
   useEffect(() => {
-    const eventSource = subscribeToWebhookEvents(userId);
+    const eventSource = subscribeToEmitterEvents(userId);
 
     eventSource.addEventListener('video-upload-complete', (event) => {
       const data = JSON.parse(event.data);

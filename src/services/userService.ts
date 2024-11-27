@@ -29,6 +29,6 @@ export const unsubscribeToUser = async (userId: string, subscriptionToId: string
   await axios.post(`${API_BASE_URL}/subscriptions/${userId}/unsubscribe/${subscriptionToId}`);
 };
 
-export const subscribeToWebhookEvents = (userId: string) => {
+export const subscribeToEmitterEvents = (userId: string) => {
   return new EventSource(`${API_BASE_URL}/subscribe-to-events/${userId}`);
 };
